@@ -59,6 +59,7 @@ extern int (*intercept_hook_point)(long syscall_number,
 
 extern void (*intercept_hook_point_clone_child)(void);
 extern void (*intercept_hook_point_clone_parent)(long pid);
+extern void (*intercept_hook_point_clone_error)(long error);
 
 /*
  * syscall_no_intercept - syscall without interception

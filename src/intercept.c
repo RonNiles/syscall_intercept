@@ -71,6 +71,8 @@ void (*intercept_hook_point_clone_child)(void)
 	__attribute__((visibility("default")));
 void (*intercept_hook_point_clone_parent)(long)
 	__attribute__((visibility("default")));
+void (*intercept_hook_point_clone_error)(long)
+	__attribute__((visibility("default")));
 
 bool debug_dumps_on;
 
@@ -475,7 +477,9 @@ static __attribute__((constructor)) void
 intercept(int argc, char **argv)
 {
 	(void) argc;
-	cmdline = argv[0];
+	cmdline = "";
+	if (argv)
+		cmdline = argv[0];
 
 	if (!syscall_hook_in_process_allowed())
 		return;
@@ -675,7 +679,7 @@ intercept_routine(struct context *context)
 		 * the clone_child_intercept_routine instead, executing
 		 * it on the new child threads stack, then returns to libc.
 		 */
-		if (desc.nr == SYS_clone && desc.args[1] != 0)
+		if (desc.nr == SYS_clone)
 			return (struct wrapper_ret){
 				.rax = context->rax, .rdx = 2 };
 		else
@@ -701,7 +705,10 @@ intercept_routine(struct context *context)
 struct wrapper_ret
 intercept_routine_post_clone(struct context *context)
 {
-	if (context->rax == 0) {
+	if (((long)context->rax) < 0) {
+		if (intercept_hook_point_clone_error != NULL)
+			intercept_hook_point_clone_error(context->rax);
+	} else if (context->rax == 0) {
 		if (intercept_hook_point_clone_child != NULL)
 			intercept_hook_point_clone_child();
 	} else {
